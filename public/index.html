@@ -4,111 +4,91 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Coloring‑Book Generator</title>
-    <!-- Tailwind (Play CDN) -->
+    <!-- Tailwind Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Notion‑like grey canvas */
+      body { background-color:#f5f4f2; }
+      /* subtle scrollbar */
+      ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#d4d4d4;border-radius:3px}
+    </style>
   </head>
-  <body class="bg-stone-50 dark:bg-stone-900 min-h-screen flex flex-col items-center py-12 px-4">
-    <div class="w-full max-w-xl space-y-8">
-      <header class="text-center space-y-2">
-        <h1 class="text-3xl font-semibold text-stone-900 dark:text-stone-100">
-          Coloring‑Book Generator
-        </h1>
-        <p class="text-stone-500 dark:text-stone-400">
-          Upload a photo &nbsp;•&nbsp; choose a style &nbsp;•&nbsp; get a crisp outline
-        </p>
-      </header>
+  <body class="min-h-screen flex flex-col items-center py-14 px-4 text-stone-800">
+    <h1 class="text-3xl font-semibold mb-10">Coloring‑Book Generator</h1>
 
-      <!-- Style dropdown -->
-      <label for="styleSelect" class="block text-stone-700 dark:text-stone-300 font-medium mb-1">Style</label>
-      <select id="styleSelect" name="style" class="w-full rounded-lg border-stone-300 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 focus:ring-stone-500 focus:border-stone-500">
-        <option value="original" selected>Original outline</option>
-        <option value="anime">Anime outline</option>
-        <option value="ghibli">Studio&nbsp;Ghibli outline</option>
-      </select>
+    <!-- Outer card -->
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-sm border border-stone-200 p-8 space-y-8">
 
-      <!-- Drop zone / uploader -->
-      <div
-        id="dropZone"
-        class="flex flex-col items-center justify-center gap-4 border-2 border-dashed border-stone-300 dark:border-stone-600 rounded-xl p-10 text-stone-500 dark:text-stone-400 cursor-pointer hover:border-stone-400 hover:bg-stone-100/40 dark:hover:border-stone-400 dark:hover:bg-stone-800/40"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 0-3 3m3-3 3 3m6-3v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8m16 0-4-4H6l-4 4" />
-        </svg>
-        <span>Drag & drop or click to select an image</span>
+      <!-- Drop zone -->
+      <label id="dropZone" class="flex flex-col items-center justify-center w-full h-56 rounded-xl border-2 border-dashed border-stone-300 hover:border-indigo-400 transition-colors cursor-pointer bg-stone-50">
         <input id="imageUpload" type="file" accept="image/*" class="hidden" />
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-stone-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v3a1 1 0 001 1h3m6 0h3a1 1 0 001-1v-3m0-6V7a1 1 0 00-1-1h-3m-6 0H5a1 1 0 00-1 1v3m5-3v12m0 0l-3-3m3 3l3-3" /></svg>
+        <p class="text-sm text-stone-500">Drag & drop or click to upload</p>
+      </label>
+
+      <!-- Controls card -->
+      <div class="space-y-4">
+        <label for="styleSelect" class="block text-sm font-medium text-stone-700">Choose style</label>
+        <select id="styleSelect" class="w-full rounded-lg border-stone-300 focus:ring-indigo-500 focus:border-indigo-500">
+          <option value="original" selected>Just like the photo</option>
+          <option value="anime">Anime style</option>
+          <option value="ghibli">Studio Ghibli style</option>
+        </select>
+
+        <button id="generateBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition-colors">Generate Coloring Page</button>
       </div>
 
-      <!-- Generate button -->
-      <button id="generateBtn" class="w-full py-3 rounded-lg bg-stone-900 text-white font-medium hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200">
-        Generate Coloring Page
-      </button>
-
-      <!-- Progress spinner (hidden by default) -->
-      <div id="spinner" class="flex items-center justify-center hidden">
-        <svg class="animate-spin h-8 w-8 text-stone-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 000 16v4l3-3-3-3v4a8 8 0 01-8-8z" />
-        </svg>
+      <!-- Result -->
+      <div id="resultBox" class="hidden flex flex-col items-center space-y-4">
+        <p class="text-stone-600 text-sm">Your Coloring Book Image:</p>
+        <img id="generatedImage" class="max-w-full rounded-lg shadow border border-stone-200" />
       </div>
-
-      <!-- Result preview -->
-      <img id="generatedImage" class="rounded-lg shadow hidden" />
     </div>
 
+    <!-- Script -->
     <script>
-      // drag‑and‑drop wiring
-      const dz = document.getElementById('dropZone');
-      const fileInput = document.getElementById('imageUpload');
-      dz.addEventListener('click', () => fileInput.click());
-      dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('bg-stone-100/60','dark:bg-stone-800/60'); });
-      dz.addEventListener('dragleave', () => dz.classList.remove('bg-stone-100/60','dark:bg-stone-800/60'));
-      dz.addEventListener('drop', e => {
-        e.preventDefault();
-        dz.classList.remove('bg-stone-100/60','dark:bg-stone-800/60');
-        if (e.dataTransfer.files.length) fileInput.files = e.dataTransfer.files;
-      });
+      const dropZone   = document.getElementById('dropZone');
+      const imageInput = document.getElementById('imageUpload');
+      const styleSel   = document.getElementById('styleSelect');
+      const generateBtn= document.getElementById('generateBtn');
+      const imgEl      = document.getElementById('generatedImage');
+      const resultBox  = document.getElementById('resultBox');
 
-      // generate logic
-      document.getElementById('generateBtn').addEventListener('click', async () => {
-        const imageEl = document.getElementById('generatedImage');
-        const spinner  = document.getElementById('spinner');
-        const style = document.getElementById('styleSelect').value;
-        const file  = fileInput.files[0];
-        if (!file) return alert('Please select an image.');
+      // drag‑drop UX
+      ;['dragenter','dragover'].forEach(evt=>dropZone.addEventListener(evt,e=>{e.preventDefault();dropZone.classList.add('border-indigo-400')}));
+      ;['dragleave','drop'].forEach(evt=>dropZone.addEventListener(evt,e=>{e.preventDefault();dropZone.classList.remove('border-indigo-400')}));
+      dropZone.addEventListener('drop', e=>{imageInput.files=e.dataTransfer.files;});
+
+      generateBtn.addEventListener('click', async () => {
+        if (!imageInput.files[0]) { alert('Please select an image first'); return; }
 
         const formData = new FormData();
-        formData.append('image', file);
-        formData.append('style', style);
+        formData.append('image', imageInput.files[0]);
+        formData.append('style', styleSel.value);
 
-        // UI state
-        spinner.classList.remove('hidden');
-        imageEl.classList.add('hidden');
+        generateBtn.disabled = true;
+        generateBtn.textContent = 'Generating…';
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 120000); // 2 min
-
+        const timeoutId  = setTimeout(()=>controller.abort(), 120000);
         try {
-          const res = await fetch('/api/generate', {
-            method: 'POST',
-            body: formData,
-            signal: controller.signal,
-          });
-          clearTimeout(timeout);
-          if (!res.ok) throw new Error(`Server ${res.status}`);
+          const res = await fetch('/api/generate', { method:'POST', body:formData, signal:controller.signal });
+          clearTimeout(timeoutId);
+          if (!res.ok) throw new Error(await res.text());
           const data = await res.json();
-          if (!data.imageBase64) throw new Error('No image returned');
-
-          imageEl.src = `data:image/png;base64,${data.imageBase64}`;
-          imageEl.classList.add('w-full');
-          imageEl.classList.remove('hidden');
-        } catch (err) {
-          alert('Failed: ' + err.message);
+          imgEl.src = `data:image/png;base64,${data.imageBase64}`;
+          imgEl.classList.add('w-full');
+          resultBox.classList.remove('hidden');
+        } catch(err) {
+          alert('Error: '+err.message);
           console.error(err);
         } finally {
-          spinner.classList.add('hidden');
+          generateBtn.disabled = false;
+          generateBtn.textContent = 'Generate Coloring Page';
         }
       });
     </script>
   </body>
 </html>
+
 
