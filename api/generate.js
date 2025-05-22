@@ -1,10 +1,10 @@
 /**
- * api/generate.js
- * Vercel Serverless Function – turns an uploaded image into a colouring-book outline.
- * Handles three styles: original, anime, ghibli.
- * Expects multipart/form-data with fields:
- *   • image  – the file
- *   • style  – "original" | "anime" | "ghibli"
+ * api/generate.js  – Vercel Serverless Function
+ * Turns an uploaded image into a colouring-book outline (original / anime / ghibli).
+ * Optimisations:
+ *   • multiparty streaming upload (no body-parser RAM hit)
+ *   • sharp down-scale to 512 px (or 384 px if >2 MB) + WebP@60/55 quality
+ *   • OpenAI size:"auto"  → cost billed on upload pixels, not 1024²
  */
 
 import { promises as fs } from 'fs';
@@ -27,8 +27,8 @@ const PROMPTS = {
 
 export const config = {
   api: {
-    bodyParser: false,   // multiparty handles the upload
-    sizeLimit: '8mb'     // plenty for 768-px WebP
+    bodyParser: false,  // multiparty handles streaming
+    sizeLimit : '8mb'   // plenty for ≤8 MB uploads
   }
 };
 
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST')
     return res.status(405).json({ error: 'Method not allowed' });
 
-  /* ── 1 · parse multipart form ───────────────────────────── */
+  /* ── 1 · parse multipart upload ─────────────────────────── */
   let fields, files;
   try {
     ({ fields, files } = await new Promise((resolve, reject) => {
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         err ? reject(err) : resolve({ fields: flds, files: fls })
       );
     }));
-  } catch (err) {
+  } catch {
     return res.status(400).json({ error: 'Invalid multipart form' });
   }
 
@@ -56,21 +56,22 @@ export default async function handler(req, res) {
 
   const origPath = file0.path;
   const mimeType = mime.lookup(file0.originalFilename || 'file.jpg');
+  if (!mimeType) return res.status(400).json({ error: 'Unknown file type' });
 
-/* ---------- smart resize & compress ---------- */
-const targetWidth  = file0.size > 2_000_000 ? 384 : 512;   // >2 MB → 384 px, else 512 px
-const targetQ      = file0.size > 2_000_000 ? 55  : 60;    // slightly lower quality for big files
+  /* ── 2 · smart resize + WebP compress ───────────────────── */
+  const targetWidth = file0.size > 2_000_000 ? 384 : 512;  // large file → smaller width
+  const targetQ     = file0.size > 2_000_000 ? 55  : 60;   // adjust quality too
 
-const resizedBuf = await sharp(origPath)
-  .resize({ width: targetWidth })
-  .webp({ quality: targetQ })
-  .toBuffer();
+  const resizedBuf  = await sharp(origPath)
+    .resize({ width: targetWidth })
+    .webp({ quality: targetQ })
+    .toBuffer();
 
   const resizedPath = origPath + '.webp';
   await fs.writeFile(resizedPath, resizedBuf);
 
+  /* ── 3 · call OpenAI (size:auto for cheap billing) ──────── */
   try {
-    /* ── 3 · OpenAI call (size:auto = billed by upload size) ─ */
     const aiRes = await openai.images.edit({
       model : 'gpt-image-1',
       image : await fileFromPath(resizedPath, { type: 'image/webp' }),
@@ -82,15 +83,12 @@ const resizedBuf = await sharp(origPath)
     const b64 = aiRes.data[0]?.b64_json;
     if (!b64) throw new Error('No image returned by OpenAI');
 
-    /* ── 4 · send base-64 PNG back to browser ─────────────── */
     res.status(200).json({ imageBase64: b64 });
   } catch (err) {
     console.error('OpenAI/processing error:', err);
     res.status(500).json({ error: err.message || 'Failed to process image' });
   } finally {
-    /* ── 5 · clean temp files ─────────────────────────────── */
+    /* ── 4 · clean temp files ─────────────────────────────── */
     await Promise.all([origPath, resizedPath].map(p => fs.unlink(p).catch(() => {})));
   }
 }
-
-
