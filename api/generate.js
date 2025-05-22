@@ -57,11 +57,14 @@ export default async function handler(req, res) {
   const origPath = file0.path;
   const mimeType = mime.lookup(file0.originalFilename || 'file.jpg');
 
-  /* ── 2 · resize → 768 px and WebP (fast & cheap) ────────── */
-  const resizedBuf = await sharp(origPath)
-    .resize({ width: 768 })
-    .webp({ quality: 70 })
-    .toBuffer();
+/* ---------- smart resize & compress ---------- */
+const targetWidth  = file0.size > 2_000_000 ? 384 : 512;   // >2 MB → 384 px, else 512 px
+const targetQ      = file0.size > 2_000_000 ? 55  : 60;    // slightly lower quality for big files
+
+const resizedBuf = await sharp(origPath)
+  .resize({ width: targetWidth })
+  .webp({ quality: targetQ })
+  .toBuffer();
 
   const resizedPath = origPath + '.webp';
   await fs.writeFile(resizedPath, resizedBuf);
