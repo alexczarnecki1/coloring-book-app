@@ -20,13 +20,15 @@
     <div class="w-full max-w-2xl bg-white rounded-2xl shadow-sm border border-stone-200 p-8 space-y-8">
 
       <!-- Drop zone -->
-      <label id="dropZone" class="flex flex-col items-center justify-center w-full h-56 rounded-xl border-2 border-dashed border-stone-300 hover:border-indigo-400 transition-colors cursor-pointer bg-stone-50">
+      <label id="dropZone" class="flex flex-col items-center justify-center w-full h-56 rounded-xl border-2 border-dashed border-stone-300 hover:border-indigo-400 transition-colors cursor-pointer bg-stone-50 gap-2 text-center">
         <input id="imageUpload" type="file" accept="image/*" class="hidden" />
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-stone-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v3a1 1 0 001 1h3m6 0h3a1 1 0 001-1v-3m0-6V7a1 1 0 00-1-1h-3m-6 0H5a1 1 0 00-1 1v3m5-3v12m0 0l-3-3m3 3l3-3" /></svg>
-        <p class="text-sm text-stone-500">Drag & drop or click to upload</p>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16" />
+        </svg>
+        <p class="text-sm text-stone-500 select-none">Drag & drop<br>or click to upload</p>
       </label>
 
-      <!-- Controls card -->
+      <!-- Controls card --> -->
       <div class="space-y-4">
         <label for="styleSelect" class="block text-sm font-medium text-stone-700">Choose style</label>
         <select id="styleSelect" class="w-full rounded-lg border-stone-300 focus:ring-indigo-500 focus:border-indigo-500">
