@@ -4,93 +4,174 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Coloring‑Book Generator</title>
-    <!-- Tailwind Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* Notion‑like grey canvas */
-      body { background-color:#f5f4f2; }
-      /* subtle scrollbar */
-      ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#d4d4d4;border-radius:3px}
+      /* hide scrollbar for library */
+      #libraryGrid::-webkit-scrollbar{display:none}
+      #libraryGrid{scrollbar-width:none}
     </style>
   </head>
-  <body class="min-h-screen flex flex-col items-center py-14 px-4 text-stone-800">
-    <h1 class="text-3xl font-semibold mb-10">Coloring‑Book Generator</h1>
+  <body class="bg-stone-50 dark:bg-stone-900 min-h-screen flex flex-col items-center py-12 px-4">
+    <div class="w-full max-w-2xl space-y-10">
+      <!-- MAIN CARD -->
+      <div class="bg-white dark:bg-stone-800 rounded-2xl shadow p-8 space-y-6">
+        <h1 class="text-3xl font-semibold text-stone-800 dark:text-stone-100">Coloring‑Book Generator</h1>
 
-    <!-- Outer card -->
-    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-sm border border-stone-200 p-8 space-y-8">
+        <!-- drop zone -->
+        <label id="dropzone" class="flex flex-col items-center justify-center border-2 border-dashed border-stone-300 dark:border-stone-600 rounded-xl p-10 cursor-pointer transition hover:bg-stone-100/50 dark:hover:bg-stone-700/30">
+          <input type="file" id="imageUpload" accept="image/*" class="hidden">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h10a4 4 0 004-4M7 10l5-5m0 0l5 5m-5-5v12" />
+          </svg>
+          <span class="mt-3 text-stone-600 dark:text-stone-300">Drag & drop or click to upload</span>
+        </label>
 
-      <!-- Drop zone -->
-      <label id="dropZone" class="flex flex-col items-center justify-center w-full h-56 rounded-xl border-2 border-dashed border-stone-300 hover:border-indigo-400 transition-colors cursor-pointer bg-stone-50 gap-2 text-center">
-        <input id="imageUpload" type="file" accept="image/*" class="hidden" />
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16" />
-        </svg>
-        <p class="text-sm text-stone-500 select-none">Drag & drop<br>or click to upload</p>
-      </label>
+        <!-- style dropdown -->
+        <div>
+          <label for="styleSelect" class="block text-stone-700 dark:text-stone-300 font-medium mb-1">Style</label>
+          <select id="styleSelect" name="style" class="w-full rounded-lg border-stone-300 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 focus:ring-stone-500 focus:border-stone-500">
+            <option value="original" selected>Original outline</option>
+            <option value="anime">Anime outline</option>
+            <option value="ghibli">Studio Ghibli outline</option>
+          </select>
+        </div>
 
-      <!-- Controls card --> -->
-      <div class="space-y-4">
-        <label for="styleSelect" class="block text-sm font-medium text-stone-700">Choose style</label>
-        <select id="styleSelect" class="w-full rounded-lg border-stone-300 focus:ring-indigo-500 focus:border-indigo-500">
-          <option value="original" selected>Just like the photo</option>
-          <option value="anime">Anime style</option>
-          <option value="ghibli">Studio Ghibli style</option>
-        </select>
+        <!-- action buttons -->
+        <div class="flex gap-3">
+          <button id="generateBtn" class="bg-stone-800 hover:bg-stone-900 text-white rounded-lg px-4 py-2 flex items-center gap-2 disabled:opacity-50">
+            <span>Generate</span>
+            <svg id="spinner" class="animate-spin h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+          </button>
+          <button id="printBtn" class="border border-stone-400 dark:border-stone-600 text-stone-700 dark:text-stone-200 rounded-lg px-4 py-2 disabled:opacity-50">Print</button>
+          <button id="toggleDelete" class="border border-red-400 text-red-500 rounded-lg px-3 py-2 ml-auto">Delete mode</button>
+        </div>
 
-        <button id="generateBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition-colors">Generate Coloring Page</button>
+        <!-- preview -->
+        <img id="generatedImage" class="w-full hidden rounded-lg border" />
       </div>
 
-      <!-- Result -->
-      <div id="resultBox" class="hidden flex flex-col items-center space-y-4">
-        <p class="text-stone-600 text-sm">Your Coloring Book Image:</p>
-        <img id="generatedImage" class="max-w-full rounded-lg shadow border border-stone-200" />
+      <!-- LIBRARY -->
+      <div class="space-y-4">
+        <div class="flex items-center gap-2">
+          <h2 class="text-2xl font-semibold text-stone-800 dark:text-stone-100">Library</h2>
+          <span id="libCount" class="text-stone-500 dark:text-stone-400 text-sm"></span>
+        </div>
+        <div id="libraryGrid" class="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto"></div>
       </div>
     </div>
 
-    <!-- Script -->
     <script>
-      const dropZone   = document.getElementById('dropZone');
-      const imageInput = document.getElementById('imageUpload');
-      const styleSel   = document.getElementById('styleSelect');
-      const generateBtn= document.getElementById('generateBtn');
-      const imgEl      = document.getElementById('generatedImage');
-      const resultBox  = document.getElementById('resultBox');
+      const generateBtn  = document.getElementById('generateBtn');
+      const spinner      = document.getElementById('spinner');
+      const imageEl      = document.getElementById('generatedImage');
+      const printBtn     = document.getElementById('printBtn');
+      const libraryGrid  = document.getElementById('libraryGrid');
+      const libCount     = document.getElementById('libCount');
+      const toggleDelete = document.getElementById('toggleDelete');
+      let deleteMode = false;
 
-      // drag‑drop UX
-      ;['dragenter','dragover'].forEach(evt=>dropZone.addEventListener(evt,e=>{e.preventDefault();dropZone.classList.add('border-indigo-400')}));
-      ;['dragleave','drop'].forEach(evt=>dropZone.addEventListener(evt,e=>{e.preventDefault();dropZone.classList.remove('border-indigo-400')}));
-      dropZone.addEventListener('drop', e=>{imageInput.files=e.dataTransfer.files;});
+      /* ---------- drag‑and‑drop UX ---------- */
+      const dropzone = document.getElementById('dropzone');
+      dropzone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropzone.classList.add('bg-stone-100/70','dark:bg-stone-700/50');
+      });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('bg-stone-100/70','dark:bg-stone-700/50'));
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('bg-stone-100/70','dark:bg-stone-700/50');
+        document.getElementById('imageUpload').files = e.dataTransfer.files;
+      });
 
+      /* ---------- generate coloring‑book ---------- */
       generateBtn.addEventListener('click', async () => {
-        if (!imageInput.files[0]) { alert('Please select an image first'); return; }
+        const fileInput = document.getElementById('imageUpload');
+        const style     = document.getElementById('styleSelect').value;
+        if (!fileInput.files[0]) return alert('Pick an image');
 
+        generateBtn.disabled = true; spinner.classList.remove('hidden');
         const formData = new FormData();
-        formData.append('image', imageInput.files[0]);
-        formData.append('style', styleSel.value);
+        formData.append('image', fileInput.files[0]);
+        formData.append('style', style);
 
-        generateBtn.disabled = true;
-        generateBtn.textContent = 'Generating…';
-
-        const controller = new AbortController();
-        const timeoutId  = setTimeout(()=>controller.abort(), 120000);
         try {
-          const res = await fetch('/api/generate', { method:'POST', body:formData, signal:controller.signal });
+          const controller = new AbortController();
+          const timeoutId  = setTimeout(() => controller.abort(), 120000);
+
+          const res  = await fetch('http://localhost:3000/generate-from-image', {
+            method: 'POST', body: formData, signal: controller.signal
+          });
           clearTimeout(timeoutId);
           if (!res.ok) throw new Error(await res.text());
           const data = await res.json();
-          imgEl.src = `data:image/png;base64,${data.imageBase64}`;
-          imgEl.classList.add('w-full');
-          resultBox.classList.remove('hidden');
-        } catch(err) {
-          alert('Error: '+err.message);
+
+          if (data.imageBase64) {
+            imageEl.src = `data:image/png;base64,${data.imageBase64}`;
+            imageEl.classList.remove('hidden');
+            imageEl.classList.add('w-full');
+            printBtn.disabled = false;
+            saveToLibrary(data.imageBase64, style);
+          } else throw new Error('No image data');
+        } catch (err) {
+          alert('Error: ' + err.message);
           console.error(err);
         } finally {
-          generateBtn.disabled = false;
-          generateBtn.textContent = 'Generate Coloring Page';
+          generateBtn.disabled = false; spinner.classList.add('hidden');
         }
       });
+
+      /* ---------- print ---------- */
+      printBtn.addEventListener('click', () => {
+        if (!imageEl.src) return;
+        const win = window.open('');
+        win.document.write(`<img src="${imageEl.src}" style="width:100%">`);
+        win.document.close();
+        win.focus();
+        win.print();
+        win.close();
+      });
+
+      /* ---------- library (localStorage) ---------- */
+      function saveToLibrary(b64, style){
+        const library = JSON.parse(localStorage.getItem('cbLibrary')||'[]');
+        library.unshift({ id:Date.now(), b64, style });
+        localStorage.setItem('cbLibrary', JSON.stringify(library));
+        renderLibrary();
+      }
+      function renderLibrary(){
+        const library = JSON.parse(localStorage.getItem('cbLibrary')||'[]');
+        libraryGrid.innerHTML = '';
+        libCount.textContent = `(${library.length})`;
+        library.forEach(item=>{
+          const wrap = document.createElement('div');
+          wrap.className = 'relative group';
+          wrap.innerHTML = `<img src="data:image/png;base64,${item.b64}" class="rounded-lg border w-full">`;
+          if(deleteMode){
+            wrap.innerHTML += `<button data-id="${item.id}" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 opacity-80 hover:opacity-100"><svg xmlns='http://www.w3.org/2000/svg' class='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 18L18 6M6 6l12 12'/></svg></button>`;
+          }
+          libraryGrid.appendChild(wrap);
+        });
+      }
+      libraryGrid.addEventListener('click', e=>{
+        const btn = e.target.closest('button[data-id]');
+        if(!btn) return;
+        const id = Number(btn.dataset.id);
+        let library = JSON.parse(localStorage.getItem('cbLibrary')||'[]');
+        library = library.filter(i=>i.id!==id);
+        localStorage.setItem('cbLibrary', JSON.stringify(library));
+        renderLibrary();
+      });
+      toggleDelete.addEventListener('click', ()=>{
+        deleteMode = !deleteMode;
+        toggleDelete.classList.toggle('bg-red-500', deleteMode);
+        toggleDelete.classList.toggle('text-white', deleteMode);
+        toggleDelete.textContent = deleteMode?'Exit delete':'Delete mode';
+        renderLibrary();
+      });
+      document.addEventListener('DOMContentLoaded', renderLibrary);
     </script>
   </body>
 </html>
-
-
